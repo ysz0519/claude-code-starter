@@ -1,0 +1,18 @@
+{
+  "name": "starter-kit",
+  "description": "Claude Code の初期セットアップ・ウィザード。環境を自動で調べ、足りない所だけ質問して、ステータスライン・権限の安全弁・デスクトップ通知・個人用 CLAUDE.md・git と GitHub・ブラウザ操作（Playwright MCP）・公式ドキュメント MCP を設定する。/starter-kit:setup で開始、/starter-kit:status で現状表、/starter-kit:guide で最初の10分の使い方",
+  "author": {
+    "name": "Yuto Suzuki"
+  },
+  "repository": "https://github.com/ysz0519/claude-code-starter",
+  "license": "MIT",
+  "keywords": [
+    "setup",
+    "onboarding",
+    "statusline",
+    "permissions",
+    "playwright",
+    "mcp",
+    "初期設定"
+  ]
+}

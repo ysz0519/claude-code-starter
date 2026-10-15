@@ -1,0 +1,9 @@
+{
+  "name": "slack-agent",
+  "description": "自分の Claude Code を Slack 上の「AI社員」として稼働させる環境をセットアップするスキル。Slack App の作成から、投稿用 CLI・メンション常駐 Bot・依頼スレッドの返信キャッチアップまでを一気通貫で導入する。「Slack 連携をセットアップして」「Claude を Slack で使えるようにして」「slack エージェント 設定」で起動。",
+  "author": {
+    "name": "Yuto Suzuki"
+  },
+  "repository": "https://github.com/ysz0519/claude-code-starter",
+  "license": "MIT"
+}

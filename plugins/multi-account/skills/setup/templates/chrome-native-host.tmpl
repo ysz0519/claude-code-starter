@@ -1,0 +1,39 @@
+#!/bin/sh
+# __FN_NAME__ 専用 Chrome の native messaging host ラッパー。
+# Chrome 拡張 ↔ Claude Code の接続先を決めるのは「manifest がどこを指すか」ではなく
+# 「host 起動時にどの CLAUDE_CONFIG_DIR が渡るか」。ここで明示的に渡す。
+# 生成元: claude-multi-account スキル（再生成: scripts/setup-chrome.sh --index __INDEX__）
+export CLAUDE_CONFIG_DIR="__CFG_DIR__"
+
+# Chrome からの起動は最小 PATH（/usr/bin:/bin:...）になるため、探索パスを明示補完する。
+export PATH="$HOME/.local/bin:$HOME/.claude/local:$HOME/.volta/bin:$HOME/.asdf/shims:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+# claude の実体を探す。
+#   1) セットアップ時に見つかったパス（環境依存が最も少ない）
+#   2) インストーラ管理の symlink（バージョン更新でも切れない）
+#   3) よくある置き場所
+#   4) PATH 経由（nvm など、上記に当てはまらない環境の保険）
+for candidate in \
+  "__CLAUDE_BIN__" \
+  "$HOME/.local/bin/claude" \
+  "$HOME/.claude/local/claude" \
+  "$HOME/.volta/bin/claude" \
+  "$HOME/.asdf/shims/claude" \
+  "/opt/homebrew/bin/claude" \
+  "/usr/local/bin/claude" \
+  "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe"
+do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    BIN="$candidate"
+    break
+  fi
+done
+[ -n "${BIN:-}" ] || BIN="$(command -v claude 2>/dev/null)"
+
+if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
+  # Chrome 側にはエラーが見えないので、原因を追えるようログに残す
+  echo "[claude-multi-account] claude の実行ファイルが見つかりません (__FN_NAME__)" >&2
+  exit 1
+fi
+
+exec "$BIN" --chrome-native-host

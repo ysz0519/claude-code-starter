@@ -1,0 +1,9 @@
+{
+  "name": "multi-account",
+  "description": "1台の Mac で Claude Code を複数の Claude アカウント（Max/Pro）で使い分けられるようにする。設定ディレクトリと認証だけを分離し、スキル・CLAUDE.md・settings は共有したまま claude2 / claude3 … のコマンドを追加する。Claude in Chrome を2つ目のアカウントでも使うための専用 Chrome もセットアップできる。「claude2 を作りたい」「アカウントを使い分けたい」「上限が来たので別アカウントに切り替えたい」「Claude Code をもう1つのアカウントで動かす」で起動。",
+  "author": {
+    "name": "Yuto Suzuki"
+  },
+  "repository": "https://github.com/ysz0519/claude-code-starter",
+  "license": "MIT"
+}

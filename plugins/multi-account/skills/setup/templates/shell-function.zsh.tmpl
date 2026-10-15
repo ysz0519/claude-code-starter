@@ -1,0 +1,37 @@
+# >>> claude-multi-account (__FN_NAME__) >>>
+# Claude Code をもう1つの Claude アカウントで起動する。
+# 分離するのは「設定ディレクトリ」と「認証」だけで、スキル・CLAUDE.md・settings は共有 symlink。
+# 生成元: claude-multi-account スキル（再生成: scripts/setup-account.sh --index __INDEX__）
+# このブロックは自動生成です。手で編集した内容は再実行時に上書きされます。
+__FN_NAME__() {
+  local cfg="__CFG_DIR__"
+  # Keychain のサービス名は Claude Code が config dir のパスから決める（sha256 先頭8桁）
+  local svc="Claude Code-credentials-$(printf '%s' "$cfg" | shasum -a 256 | cut -c1-8)"
+  local tf="$cfg/.oauth-token"
+  local a add_rc=1 is_print=0
+  for a in "$@"; do
+    case "$a" in
+      -p|--print) add_rc=0; is_print=1 ;;
+      --remote-control|--rc) add_rc=0 ;;
+    esac
+  done
+__CHROME_BLOCK__
+  # サブシェルで env を隔離する。呼び出し元のシェルとメインの claude を汚染しない
+  ( export CLAUDE_CONFIG_DIR="$cfg"
+    if security find-generic-password -s "$svc" >/dev/null 2>&1; then
+      : # full-scope login 済み（このプロファイル専用の Keychain エントリ）→ Remote Control 可
+    elif [ -s "$tf" ]; then
+      # setup-token の長期トークン。inference 専用なので Remote Control は張れない
+      export CLAUDE_CODE_OAUTH_TOKEN="$(cat "$tf")"
+      add_rc=0
+      echo "⚠️  __FN_NAME__: full-scope login が無いため Remote Control なしで起動します（起動後に /login すると次回から有効）" >&2
+    else
+      add_rc=0
+      echo "ℹ️  __FN_NAME__: このプロファイルはまだ未ログインです。起動したら /login で2つ目のアカウントにログインしてください（初回のみ）。" >&2
+    fi
+    local -a extra=()
+    (( add_rc )) && extra=(--remote-control)
+__WORKDIR_BLOCK__
+    command claude "${extra[@]}" "$@" )
+}
+# <<< claude-multi-account (__FN_NAME__) <<<

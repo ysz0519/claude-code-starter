@@ -1,0 +1,72 @@
+# Slack App マニフェスト（自分専用の Claude エージェント Bot）
+#
+# ── 使い方 ─────────────────────────────────────────────────────────
+# 1. https://api.slack.com/apps → 「Create New App」→「From an app manifest」
+# 2. ワークスペースを選び、下の YAML を丸ごと貼り付ける
+#    ★ display_information.name / bot_user.display_name の claude_xx を自分用に変える
+#      （例: claude_ab。誰のエージェントの発言か Slack 上で一目で分かるようにする）
+# 3. Create → 「Install to Workspace」で承認する
+# 4. トークンを3つ控える（setup.sh が聞いてきます）
+#    - Bot User OAuth Token   : 「OAuth & Permissions」ページの xoxb-...
+#    - User OAuth Token       : 同ページの xoxp-...
+#    - App-Level Token        : 「Basic Information」→ App-Level Tokens →
+#                               「Generate Token and Scopes」で connections:write を付けて生成 → xapp-...
+#      ※ App-Level Token は常駐 Bot（Socket Mode）を使う場合のみ必要
+# 5. Bot を使いたいチャンネルで /invite @claude_xx
+#
+# ── 注意 ───────────────────────────────────────────────────────────
+# - ワークスペースの設定によっては App のインストールに管理者承認が要ります。
+#   その場合は申請ボタンが出るので、理由を書いて申請してください。
+# - トークンは3つとも秘密情報です。Slack に貼らない・Git にコミットしない。
+#   setup.sh が ~/.claude/ 配下に chmod 600 で保存します。
+# ───────────────────────────────────────────────────────────────────
+
+display_information:
+  name: claude_xx
+  description: 自分専用の Claude Code エージェント。メンションで作業を依頼し、依頼スレッドの返信も拾う。
+  background_color: "#1f2a37"
+
+features:
+  bot_user:
+    display_name: claude_xx
+    always_online: true
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read      # メンションを受け取る
+      - chat:write             # Bot として投稿する
+      - reactions:write        # リアクションを付ける
+      - files:write            # snippet（長文・md・コード）を添付する
+      - im:write               # 自分との DM チャンネルを開く
+      - im:read
+      - im:history             # DM を読む（Bot への指示）
+      - channels:read
+      - channels:history       # パブリックチャンネルのスレッドを読む
+      - groups:read
+      - groups:history         # プライベートチャンネル（招待された場合のみ）
+      - mpim:read
+      - mpim:history
+      - users:read             # 発言者名の解決
+    user:
+      - search:read            # 検索（未読の近似・過去投稿の探索）
+      - chat:write             # 自分名義で投稿する（Bot 名義にしたくない返信用）
+
+settings:
+  # Socket Mode: 公開 URL を持たずにイベントを受け取る（各自の Mac で動かすため必須）
+  socket_mode_enabled: true
+  event_subscriptions:
+    bot_events:
+      - app_mention
+      - message.im
+      - message.channels
+      - message.groups
+      - message.mpim
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  token_rotation_enabled: false

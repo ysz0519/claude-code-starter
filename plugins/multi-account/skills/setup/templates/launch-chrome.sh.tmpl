@@ -1,0 +1,27 @@
+#!/bin/bash
+# __FN_NAME__ 専用 Chrome（別 user-data-dir）を起動する。
+# 起動後の確認: chrome://version の「プロフィール パス」が下記 user-data-dir 配下であること。
+# 生成元: claude-multi-account スキル（再生成: scripts/setup-chrome.sh --index __INDEX__）
+USER_DATA_DIR="__CFG_DIR__/chrome-user-data"
+CHROME_APP="__CHROME_APP__"
+
+if [ ! -d "$CHROME_APP" ]; then
+  echo "Google Chrome が見つかりません: $CHROME_APP" >&2
+  exit 1
+fi
+
+# 追加引数から --user-data-dir を除外（専用インスタンスの分離前提を壊させない）
+EXTRA_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --user-data-dir*) echo "警告: --user-data-dir の上書きは無視します: $arg" >&2 ;;
+    *) EXTRA_ARGS+=("$arg") ;;
+  esac
+done
+
+# open -na: launchd 経由で新規インスタンスをデタッチ起動（シェル終了に巻き込まれない）
+if ! open -na "$CHROME_APP" --args --user-data-dir="$USER_DATA_DIR" "${EXTRA_ARGS[@]}"; then
+  echo "__FN_NAME__ 用 Chrome の起動に失敗しました (open exit=$?)" >&2
+  exit 1
+fi
+echo "__FN_NAME__ 用 Chrome を起動しました (user-data-dir=$USER_DATA_DIR)"

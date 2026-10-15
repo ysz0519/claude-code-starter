@@ -1,0 +1,24 @@
+{
+  "name": "claude-code-starter",
+  "description": "Claude Code を入れたばかりの人向けの初期セットアップ・ウィザードと、最初に入れると便利なスキル",
+  "owner": {
+    "name": "Yuto Suzuki"
+  },
+  "plugins": [
+    {
+      "name": "starter-kit",
+      "source": "./plugins/starter-kit",
+      "description": "初期セットアップ・ウィザード。環境を自動で調べ、足りない所だけ質問して設定する（ステータスライン・権限の安全弁・通知・CLAUDE.md・git/GitHub・ブラウザ操作・MCP）。/starter-kit:setup で開始"
+    },
+    {
+      "name": "multi-account",
+      "source": "./plugins/multi-account",
+      "description": "1台の Mac で Claude Code を複数の Claude アカウントで使い分ける（claude2 / claude3 …）。上限が来たときの切り替え用"
+    },
+    {
+      "name": "slack-agent",
+      "source": "./plugins/slack-agent",
+      "description": "自分の Claude Code を Slack 上の「AI 社員」として動かす環境を作る（投稿 CLI・メンション常駐 Bot・依頼スレッドの自動再開）"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@vault/slack-cli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "slack-cli": "./bin/slack-cli"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "start": "node dist/cli.js",
+    "prepare": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@slack/web-api": "7.3.4",
+    "commander": "12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.2",
+    "@typescript-eslint/eslint-plugin": "7.13.1",
+    "@typescript-eslint/parser": "7.13.1",
+    "@vitest/coverage-v8": "2.0.5",
+    "eslint": "8.57.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-import": "2.29.1",
+    "tsx": "4.15.6",
+    "typescript": "5.4.5",
+    "vitest": "2.0.5"
+  }
+}

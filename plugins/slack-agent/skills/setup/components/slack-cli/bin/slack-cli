@@ -1,0 +1,13 @@
+#!/bin/sh
+# slack-cli — tsc コンパイル済みのエントリポイントを呼び出す
+# dist/cli.js が無い場合は自動ビルドして起動する（fresh checkout 対策）
+DIR="$(dirname "$0")"
+DIST="$DIR/../dist/cli.js"
+if [ ! -f "$DIST" ]; then
+  echo "slack-cli: dist/cli.js not found. Building..." >&2
+  (cd "$DIR/.." && npm run --silent build) || {
+    echo "slack-cli: build failed. Run 'npm install && npm run build' in $(cd "$DIR/.." && pwd) first." >&2
+    exit 4
+  }
+fi
+exec node "$DIST" "$@"
