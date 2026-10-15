@@ -85,6 +85,17 @@ claude plugin install starter-kit@claude-code-starter
 ここから先は Claude が環境を調べ、足りない所だけを質問します（最大 7 問）。答え終わると設定が書かれ、人がやることが残っていれば番号付きで案内されます。
 終わったら Claude Code を起動し直してください。ステータスライン・通知・接続口はそこから有効になります。
 
+### zip で受け取った場合
+
+GitHub ではなく zip（`claude-code-starter.zip`）で受け取った人は、手順 5 の2行の代わりに次を実行します（zip をダブルクリックで展開し、`claude-code-starter` フォルダが「ダウンロード」にある前提）。
+
+```bash
+claude plugin marketplace add ~/Downloads/claude-code-starter
+claude plugin install starter-kit@claude-code-starter
+```
+
+展開したフォルダを動かすと動かなくなるので、置き場を決めてから登録してください。新しい版が出たときは、新しい zip を同じ場所に展開し直すか、GitHub からの導入に切り替えます（`claude plugin marketplace remove claude-code-starter` のあと手順 5）。
+
 ## 終わったあと
 
 | やりたいこと | 打つもの |
