@@ -79,18 +79,4 @@ export const config = {
   /** Google Chat polling interval in ms (default: 1 min) */
   GCHAT_POLL_INTERVAL_MS: Number(process.env.GCHAT_POLL_INTERVAL_MS ?? "60000"),
 
-  // --- Discord auto-reply ---
-  /** Enable Discord Gateway listener (requires DISCORD_BOT_TOKEN) */
-  DISCORD_ENABLED: process.env.DISCORD_ENABLED === "true",
-  /** Discord bot token */
-  DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN ?? "",
-  /** Your Discord user ID — drafts are generated for messages mentioning this user */
-  DISCORD_TARGET_USER_ID: process.env.DISCORD_TARGET_USER_ID ?? "",
-  /** Guild IDs to watch (comma-separated; empty = all guilds the bot is in) */
-  DISCORD_GUILD_IDS: (process.env.DISCORD_GUILD_IDS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
-  /** Recent context messages to fetch per mention (for reply generation) */
-  DISCORD_CONTEXT_MESSAGES: Number(process.env.DISCORD_CONTEXT_MESSAGES ?? "15"),
 };

@@ -31,7 +31,7 @@ import json
 import os
 import sys
 
-# 配布版: atomic write ヘルパは同梱の lib/ から読む（Vault 依存を持たない）
+# atomic write ヘルパは同梱の lib/ から読む
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 from atomic_write import atomic_write_json  # noqa: E402
 
@@ -44,7 +44,7 @@ EVENTS_PATH = os.path.join(STATE_DIR, "register-events.jsonl")
 
 TTL_DAYS = 14  # 新着なしで自動 close（監視の単調増加防止）
 CLOSED_PURGE_DAYS = 30  # closed エントリの保持期間
-PROCESSING_STALE_MIN = 120  # processing のまま放置された場合の回収（claude-invoke の既定 timeout と同値）
+PROCESSING_STALE_MIN = 120  # processing のまま放置された場合の回収（キャッチアップ1回の実行より十分長くする）
 MAX_RUNS_PER_DAY = 6  # 1スレッドあたりの1日のキャッチアップ起動上限（bot ピンポン防止）
 
 

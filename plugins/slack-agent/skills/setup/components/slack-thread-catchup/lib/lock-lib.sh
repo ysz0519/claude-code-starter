@@ -1,14 +1,14 @@
 #!/bin/bash
-# mkdir ロックの共通ヘルパ（platform-rules.md「ファイルロック」の実装・source 専用）
+# mkdir ロックの共通ヘルパ（source 専用）
 #
 # 解く問題: SIGKILL・強制終了・パニックで trap が走らないとロックディレクトリが残り、
 # 以後そのジョブが毎回 skip し続けて「静かに止まる」。TTL とプロセス生存確認で回収する。
 #
-# macOS に flock(1) が無いため mkdir の atomic 性を使う（platform-rules.md 準拠）。
+# macOS に flock(1) が無いため mkdir の atomic 性を使う。
 #
 # ## 使い方
 #
-#   source "$VAULT/.claude/scripts/lock-lib.sh"
+#   source "$SCRIPT_DIR/lib/lock-lib.sh"
 #   lock_acquire "/tmp/myskill.lock" 120 "$LOG_FILE"; rc=$?
 #   [ "$rc" -eq 1 ] && exit 0    # 他が保持中 = 正常な skip
 #   [ "$rc" -ne 0 ] && exit 1    # 取得エラー = 異常（launchd の exit code で拾わせる）
@@ -16,10 +16,8 @@
 #
 # 戻り値: 0=取得 / 1=他が保持中（skip） / 2=取得エラー（skip と混同しない）
 #
-# TTL の決め方: そのジョブの watchdog（claude-invoke.sh の CLAUDE_TIMEOUT_SEC 等）より
+# TTL の決め方: そのジョブの watchdog（claude の実行を打ち切る時間）より
 # 十分に長くする。正常実行は watchdog で必ず終わるので、TTL 超えのロックは取り残しと断定できる。
-#
-# 正本: .claude/rules/platform-rules.md ／ 定数: shared-constants.md → path.lock_lib
 
 # 二重 source の防止（複数 lib を source する wrapper がある）
 [ -n "${_LOCK_LIB_LOADED:-}" ] && return 0

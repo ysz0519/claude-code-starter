@@ -3,7 +3,7 @@ import { config } from "./config";
 
 // ---- types ----
 
-export type SourceType = "slack" | "gmail" | "gchat" | "discord";
+export type SourceType = "slack" | "gmail" | "gchat";
 
 export interface PendingApproval {
   id: string;
@@ -22,10 +22,6 @@ export interface PendingApproval {
   gchatSpaceName?: string;
   /** For Google Chat: message name (e.g., spaces/AAAA/messages/BBBB) */
   gchatMessageName?: string;
-  /** For Discord: channel ID to reply in */
-  discordChannelId?: string;
-  /** For Discord: message ID to reply to (referenced so the reply threads under it) */
-  discordMessageId?: string;
   /** Original sender display name */
   senderName: string;
   /** Original message excerpt */
@@ -89,8 +85,8 @@ export async function postApprovalRequest(
   // NOTE: registered AFTER the DM is posted (below) so a postMessage failure
   // doesn't leave an unreachable pending entry lingering until TTL.
 
-  const sourceEmojiMap: Record<SourceType, string> = { slack: "💬", gmail: "📩", gchat: "💬", discord: "🎮" };
-  const sourceLabelMap: Record<SourceType, string> = { slack: "Slack", gmail: "Gmail", gchat: "Google Chat", discord: "Discord" };
+  const sourceEmojiMap: Record<SourceType, string> = { slack: "💬", gmail: "📩", gchat: "💬" };
+  const sourceLabelMap: Record<SourceType, string> = { slack: "Slack", gmail: "Gmail", gchat: "Google Chat" };
   const sourceEmoji = sourceEmojiMap[params.sourceType];
   const sourceLabel = sourceLabelMap[params.sourceType];
 

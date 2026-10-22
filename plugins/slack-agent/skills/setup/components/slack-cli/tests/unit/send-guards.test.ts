@@ -76,7 +76,7 @@ describe('shouldRegisterThreadWatch', () => {
     expect(shouldRegisterThreadWatch(payload, 'C000CHAN01')).toBe(false);
   });
 
-  it('skips dm.yuto and ops_log', () => {
+  it('skips the owner DM and ops_log', () => {
     const payload = { text: `🔴 要対応\n${CC}` };
     expect(shouldRegisterThreadWatch(payload, 'D000TESTDM')).toBe(false);
     expect(shouldRegisterThreadWatch(payload, 'C000TESTLOG')).toBe(false);

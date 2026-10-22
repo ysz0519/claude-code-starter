@@ -13,40 +13,8 @@ export interface SkillMatch {
  * Each entry: [regex pattern, skill name, budget tier]
  */
 const SKILL_PATTERNS: Array<[RegExp, string, number]> = [
-  // Facebook Messenger URL を貼ったら返信案を作る（messenger-reply・read-only 取得 → 返信案テキスト）
-  // 先頭に置き、URL 検知を他の keyword パターンより優先する
-  [
-    /https?:\/\/(?:www\.)?(?:messenger\.com\/(?:e2ee\/)?t\/|facebook\.com\/messages\/(?:e2ee\/)?t\/)\S+/i,
-    "messenger-reply",
-    config.BUDGET_SKILL,
-  ],
-
+  // 自分のスキルへの振り分けをここに足す（例: [/日報/i, "daily-report", config.BUDGET_SKILL]）。
   // ルーティング先は skillExists() で `.claude/skills/<name>/SKILL.md` の実在を検証する（実在しなければ汎用処理へ）
-
-  // Content creation skills
-  [/x投稿|xの下書き|ツイート|twitter.*下書き/i, "x-daily-post", config.BUDGET_SKILL],
-  [/日報/i, "daily-report", config.BUDGET_SKILL],
-  [/seo記事|seo.*書/i, "seo-article-writer", config.BUDGET_SKILL],
-  [/ホワイトペーパー|whitepaper|wp.*作成/i, "whitepaper-writer", config.BUDGET_SKILL],
-
-  // Analysis & reports
-  [/seo.*データ|gsc.*データ/i, "seo-data-collector", config.BUDGET_SKILL],
-  [/seo.*リライト|リライト判定/i, "seo-rewriter", config.BUDGET_SKILL],
-  [/seo.*戦略|seo.*strategy/i, "seo-strategy", config.BUDGET_SKILL],
-  [/seo.*月次|seo.*レポート/i, "seo-monthly-report", config.BUDGET_SKILL],
-  [/x.*週次.*レポート|x.*weekly/i, "x-weekly-kpi-report", config.BUDGET_SKILL],
-  [/x.*月次.*レポート|x.*monthly/i, "x-monthly-kpi-report", config.BUDGET_SKILL],
-  [/月次.*plcf|plcf.*レポート|pl.*cf.*レポート/i, "monthly-plcf-report", config.BUDGET_SKILL],
-  [/月報|月次振り返り/i, "monthly-review", config.BUDGET_SKILL],
-
-  // Operational skills
-  [/メール.*todo|朝.*メール|未返信/i, "morning-email-todo", config.BUDGET_SKILL],
-  [/メール.*下書き|返信.*ドラフト/i, "email-draft", config.BUDGET_SKILL],
-  [/議事録.*タスク|mtg.*タスク|会議.*タスク抽出/i, "meeting-task-extract", config.BUDGET_SKILL],
-  [/tldv|録画.*データ|会議.*録画/i, "tldv-meeting-lookup", config.BUDGET_SKILL],
-  [/ソーシャルリスニング|x.*検索.*分析/i, "x-social-listening", config.BUDGET_SKILL],
-  [/週次.*戦略.*提案|戦略提言/i, "weekly-strategy-proposal", config.BUDGET_SKILL],
-  [/空き.*スロット|日程.*候補|空き時間/i, "calendar-available-slots", config.BUDGET_SKILL],
 ];
 
 /**

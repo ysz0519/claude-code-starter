@@ -67,7 +67,7 @@ describe('cmdSnippet', () => {
     mockClient.files.completeUploadExternal.mockResolvedValue({
       ok: true,
       files: [
-        { id: 'F999', name: 'sample.md', permalink: 'https://overflow.slack.com/files/F999' },
+        { id: 'F999', name: 'sample.md', permalink: 'https://example.slack.com/files/F999' },
       ],
     });
 
@@ -90,7 +90,7 @@ describe('cmdSnippet', () => {
     );
     const out = stdoutSpy.mock.calls.map((c) => String(c[0])).join('');
     expect(out).toContain('"file_id":"F999"');
-    expect(out).toContain('"permalink":"https://overflow.slack.com/files/F999"');
+    expect(out).toContain('"permalink":"https://example.slack.com/files/F999"');
   });
 
   it('uses --title when provided', async () => {

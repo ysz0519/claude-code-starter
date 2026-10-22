@@ -13,7 +13,7 @@ async function main(): Promise<void> {
   const program = new Command();
   program
     .name('slack-cli')
-    .description('Slack CLI for Yuto Suzuki (Bot + User Token).')
+    .description('Slack CLI (Bot + User Token).')
     .version('1.0.0');
 
   program

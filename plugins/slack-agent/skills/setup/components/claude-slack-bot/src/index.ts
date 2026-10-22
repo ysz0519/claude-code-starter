@@ -12,9 +12,6 @@ import { setupSlackMentionWatcher, joinAllPublicChannels } from "./watchers/slac
 import { setupGmailPoller } from "./watchers/gmail-poller";
 import { setupGChatPoller, sendGChatReply } from "./watchers/gchat-poller";
 import { setupReplyBridge } from "./watchers/reply-bridge";
-import { setupDiscordReplyBridge } from "./watchers/discord-reply-bridge";
-import { setupDiscordListener } from "./watchers/discord-listener";
-import { sendDiscordReply } from "./discord-client";
 import { buildSystemPrompt } from "./system-prompt";
 import { detectSkill, buildSkillPrompt } from "./skill-router";
 import { TaskQueue } from "./concurrency";
@@ -36,7 +33,7 @@ const app = new App({
   logLevel: LogLevel.INFO,
 });
 
-// User Token client: posts messages as Yuto Suzuki (not as bot)
+// User Token client: posts messages as the owner (not as bot)
 const userClient = new WebClient(config.SLACK_USER_TOKEN);
 
 // ---- session management ----
@@ -411,7 +408,7 @@ async function sendApprovedReply(
 
   try {
     if (pending.sourceType === "slack" && pending.channel && pending.threadTs) {
-      // Send reply as user (Yuto Suzuki) via User Token
+      // Send reply as the owner via User Token
       await userClient.chat.postMessage({
         channel: pending.channel,
         thread_ts: pending.threadTs,
@@ -437,14 +434,6 @@ async function sendApprovedReply(
         channel: config.DM_CHANNEL_ID,
         text: `✅ Google Chat返信を送信しました${patternLabel ? `（${patternLabel}）` : ""}（${pending.contextLabel}）`,
       });
-    } else if (pending.sourceType === "discord" && pending.discordChannelId && pending.discordMessageId) {
-      // Sent by the BOT account (Discord disallows impersonating the human user)
-      await sendDiscordReply(pending.discordChannelId, pending.discordMessageId, replyText);
-      sent = true;
-      await client.chat.postMessage({
-        channel: config.DM_CHANNEL_ID,
-        text: `✅ Discord返信を送信しました${patternLabel ? `（${patternLabel}）` : ""}（${pending.contextLabel}）`,
-      });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -467,7 +456,7 @@ async function sendApprovedReply(
       await client.chat.update({
         channel: config.DM_CHANNEL_ID,
         ts: msgTs,
-        text: `✅ 送信済み${patternLabel ? ` (${patternLabel})` : ""} | ${{ slack: "Slack", gmail: "Gmail", gchat: "Google Chat", discord: "Discord" }[pending.sourceType]} | ${pending.senderName}`,
+        text: `✅ 送信済み${patternLabel ? ` (${patternLabel})` : ""} | ${{ slack: "Slack", gmail: "Gmail", gchat: "Google Chat" }[pending.sourceType]} | ${pending.senderName}`,
         blocks: [],
       });
     }
@@ -553,157 +542,6 @@ app.view("edit_reply_modal", async ({ ack, view, client }) => {
   const editedText = view.state.values.reply_block.reply_text.value ?? pending.replyTexts[0];
   const msgTs = undefined; // modal doesn't have original message ts
   await sendApprovedReply(pending, editedText, client, msgTs, "編集済み");
-});
-
-// ---- board-team approval handlers ----
-
-// OK（全承認）: trigger Claude to execute approved actions
-app.action("board_ok", async ({ action, ack, body, client }) => {
-  await ack();
-  const msgTs = (body as any).message?.ts;
-  const channel = (body as any).channel?.id ?? config.DM_CHANNEL_ID;
-
-  // Update original message to show approved state
-  try {
-    if (msgTs) {
-      // Get original blocks and replace the actions block with a confirmation
-      const originalBlocks = (body as any).message?.blocks ?? [];
-      const updatedBlocks = originalBlocks
-        .filter((b: any) => b.type !== "actions")
-        .concat({
-          type: "section",
-          text: { type: "mrkdwn", text: "✅ *全承認済み* — アクション実行中..." },
-        });
-      await client.chat.update({
-        channel,
-        ts: msgTs,
-        text: "✅ ボードチーム全承認済み",
-        blocks: updatedBlocks,
-      });
-    }
-  } catch { /* best effort */ }
-
-  // Trigger Claude to execute Phase 9
-  const threadTs = msgTs ?? (body as any).message?.thread_ts;
-  await handlePrompt(
-    "ボードチームをdaily-autoモードで起動して Phase 9 を実行してください。承認内容: OK（全アクション承認）",
-    channel,
-    threadTs,
-  );
-});
-
-// NG（却下）: open modal for rejection details
-app.action("board_ng", async ({ action, ack, body, client }) => {
-  await ack();
-  const msgTs = (body as any).message?.ts ?? "unknown";
-
-  await client.views.open({
-    trigger_id: (body as any).trigger_id,
-    view: {
-      type: "modal" as const,
-      callback_id: "board_ng_modal",
-      private_metadata: JSON.stringify({ msgTs, channel: (body as any).channel?.id }),
-      title: { type: "plain_text" as const, text: "アクション却下" },
-      submit: { type: "plain_text" as const, text: "却下を送信" },
-      close: { type: "plain_text" as const, text: "キャンセル" },
-      blocks: [
-        {
-          type: "input",
-          block_id: "board_ng_block",
-          label: { type: "plain_text" as const, text: "却下内容（例: NG 2 理由）" },
-          element: {
-            type: "plain_text_input",
-            action_id: "board_ng_text",
-            multiline: true,
-            placeholder: { type: "plain_text" as const, text: "NG 2 優先度低のため保留" },
-          },
-        },
-      ],
-    } as any,
-  });
-});
-
-// NG modal submission
-app.view("board_ng_modal", async ({ ack, view, client }) => {
-  await ack();
-  const { msgTs, channel } = JSON.parse(view.private_metadata);
-  const ngText = view.state.values.board_ng_block.board_ng_text.value ?? "NG";
-
-  // Update original message
-  try {
-    if (msgTs && msgTs !== "unknown") {
-      await client.chat.update({
-        channel: channel ?? config.DM_CHANNEL_ID,
-        ts: msgTs,
-        text: `❌ 却下: ${ngText}`,
-        blocks: [],
-      });
-    }
-  } catch { /* best effort */ }
-
-  // Trigger Claude to handle the NG
-  await handlePrompt(
-    `ボードチームをdaily-autoモードで起動して Phase 9 を実行してください。承認内容: ${ngText}`,
-    channel ?? config.DM_CHANNEL_ID,
-    msgTs,
-  );
-});
-
-// コメント: open modal for free-form comment
-app.action("board_comment", async ({ action, ack, body, client }) => {
-  await ack();
-  const msgTs = (body as any).message?.ts ?? "unknown";
-
-  await client.views.open({
-    trigger_id: (body as any).trigger_id,
-    view: {
-      type: "modal" as const,
-      callback_id: "board_comment_modal",
-      private_metadata: JSON.stringify({ msgTs, channel: (body as any).channel?.id }),
-      title: { type: "plain_text" as const, text: "コメント" },
-      submit: { type: "plain_text" as const, text: "コメントを送信" },
-      close: { type: "plain_text" as const, text: "キャンセル" },
-      blocks: [
-        {
-          type: "input",
-          block_id: "board_comment_block",
-          label: { type: "plain_text" as const, text: "コメント内容" },
-          element: {
-            type: "plain_text_input",
-            action_id: "board_comment_text",
-            multiline: true,
-            placeholder: { type: "plain_text" as const, text: "OK 1,3 のみ承認。2は保留" },
-          },
-        },
-      ],
-    } as any,
-  });
-});
-
-// Comment modal submission
-app.view("board_comment_modal", async ({ ack, view, client }) => {
-  await ack();
-  const { msgTs, channel } = JSON.parse(view.private_metadata);
-  const commentText = view.state.values.board_comment_block.board_comment_text.value ?? "";
-
-  // Update original message
-  try {
-    if (msgTs && msgTs !== "unknown") {
-      await client.chat.update({
-        channel: channel ?? config.DM_CHANNEL_ID,
-        ts: msgTs,
-        text: `💬 コメント: ${commentText}`,
-        blocks: [],
-      });
-    }
-  } catch { /* best effort */ }
-
-  // Trigger Claude to handle the comment
-  await handlePrompt(
-    `ボードチームをdaily-autoモードで起動して Phase 9 を実行してください。承認内容: ${commentText}`,
-    channel ?? config.DM_CHANNEL_ID,
-    msgTs,
-  );
 });
 
 // ---- Generic skill action handlers ----
@@ -889,8 +727,8 @@ app.view("skill_comment_modal", async ({ ack, view, client }) => {
 // ---- Generic "open HTML in browser" handler ----
 // Any skill can attach a button {action_id: "open_html", value: "<abs path>"} to
 // open a local HTML artifact in this Mac's default browser. Security: only
-// existing .html/.htm files under ~/Downloads are allowed (per the
-// .claude/rules/html-output-rules.md all review HTML lives there), and the
+// existing .html/.htm files under ~/Downloads are allowed (review HTML is
+// expected to be saved there), and the
 // resolved realpath is checked so symlinks can't escape the allowlist.
 app.action("open_html", async ({ action, ack, respond }) => {
   await ack();
@@ -948,7 +786,7 @@ async function sendGmailReply(messageId: string, body: string, subject: string):
 
   // Join all public channels, then register auto-reply watchers
   await joinAllPublicChannels(app);
-  // [DISABLED 2026-04-28] 自動返信ワークフロー停止（裕斗指示）
+  // 自動返信ワークフローは既定で止めてある（使うときは下の setup 行のコメントを外す）
   // Slackメンション・Gmail・GChatの自動返信案生成を停止。
   // Bot のDM/メンション対話アシスタント機能と承認ボタンは維持。
   // setupSlackMentionWatcher(app);
@@ -961,19 +799,6 @@ async function sendGmailReply(messageId: string, body: string, subject: string):
   // mention watcher remain DISABLED above.)
   setupReplyBridge(app);
 
-  // [2026-06-18] Discord: Gateway listener detects server-wide @mentions and
-  // enqueues them; the launchd `discord-reply` skill generates reply drafts and
-  // writes bridge requests; this consumer posts the buttoned approval DM (Slack).
-  // The bridge consumer is always on (cheap file poll). The Gateway listener only
-  // starts when explicitly enabled and a token is present.
-  setupDiscordReplyBridge(app);
-  if (config.DISCORD_ENABLED && config.DISCORD_BOT_TOKEN) {
-    setupDiscordListener(app).catch((e) =>
-      console.error(`[discord-listener] failed to start: ${e}`)
-    );
-  } else {
-    console.log("[discord-listener] disabled (set DISCORD_ENABLED=true + DISCORD_BOT_TOKEN to enable)");
-  }
 
   console.log("📬 Auto-reply system activated");
 })();

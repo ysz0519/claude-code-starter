@@ -64,7 +64,7 @@ const SKIP_SAAS: RegExp[] = [
   /@figma\.com$/i,
 ];
 
-// 6. ATS (Applicant Tracking Systems) — handled by dedicated HH team
+// 6. ATS (Applicant Tracking Systems) — not personal correspondence
 const SKIP_ATS: RegExp[] = [
   /hrmos\.co/i,
   /herp\.cloud/i,
