@@ -106,6 +106,24 @@ claude-which    # 今どちらのプロファイルで動いているかを表�
 
 3つ目が必要になったら `--index 3` で同じ手順を繰り返すだけ。
 
+## 上限で止まった会話を別アカウントで続ける
+
+会話の記録はアカウントごとに別フォルダにあるので、切り替えただけでは続きから再開できない。
+
+**手動**: 止まった画面の `/status` で Session ID を控え、次の1行で移す（複数 ID を並べてよい）。
+
+```bash
+bash scripts/move-session.sh --to auto <ID> [<ID>...]   # auto / main / 2 / 3 ...
+```
+
+- 全アカウントから同じ ID の記録を探し、**最後の発言の時刻が最も新しいもの**をコピーする（更新時刻では選ばない）
+- `--to auto` は、記録が今あるアカウントを除き、5時間枠と週の枠の残りの少ない方が最も大きいアカウントを選ぶ。枠の値は画面下の使用量表示と同じ記録（`~/.claude/state/statusline-usage/`）
+- 既定は前面の窓に新しいタブを開いて即実行。`--prepare` は打ち込むだけ、`--no-launch` はコマンドの表示だけ
+- 元のタブは閉じる。残すと枠が戻った時刻に元のアカウントで自動再開し、同じ作業が二重に動く
+- 途中で失敗したチームメイトは自動では戻らないので、再開後に「失敗した writer をやり直して」のように頼む
+- 回帰テスト: `scripts/test-move-session.sh`
+- Claude の会話の中から別アカウントの設定を触るときは、会話の環境変数（`CLAUDE_CODE_SESSION_ID`・`CLAUDECODE`・`CLAUDE_CODE_CHILD_SESSION` 等）を `env -u` で外す。付いたままだと `CLAUDE_CONFIG_DIR` の指定より会話のアカウントが優先される
+
 ## Claude in Chrome を2つ目のアカウントで使う
 
 `--with-chrome` を付けなかった場合、あとから追加できる。
@@ -148,6 +166,7 @@ bash scripts/setup-chrome.sh --index 2
 | `scripts/setup-account.sh` | プロファイル作成・共有 symlink・起動関数の追記（`--dry-run` / `--with-chrome` / `--workdir` / `--no-shell`） |
 | `scripts/setup-chrome.sh` | そのプロファイル専用 Chrome 一式（user-data-dir / native host ラッパー / manifest / 起動スクリプト） |
 | `scripts/status.sh` | 健康診断（read-only）。認証・共有 symlink・分離・Chrome の状態を一覧 |
+| `scripts/move-session.sh` | 上限で止まった会話を別アカウントへコピーして iTerm のタブで再開（`--to auto` / `--prepare` / `--no-launch`） |
 | `scripts/lib/common.sh` | 共通ライブラリ（dry-run・テンプレート描画・マーカーブロック更新・symlink） |
 | `templates/` | 起動関数 / native host / Chrome 起動スクリプト / manifest の雛形 |
 

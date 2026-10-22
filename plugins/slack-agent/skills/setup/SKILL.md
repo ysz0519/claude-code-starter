@@ -120,6 +120,7 @@ Slack への投稿は `<SKILL_DIR>/references/slack-post-rules.md` に従う。
 | 機構 | 値 |
 |---|---|
 | 自己ループ防止 | 自分の Bot・他 bot の発言はキャッチアップのトリガーにしない |
+| ボット名義の投稿の除外 | 他のボットの名義の投稿は、自分か自分の Bot へのメンションが付いたもの（相手の Claude の返信）だけ数え、宛先の無い受付表示・エラー表示では起こさない。人が自分のアプリ経由で自分の名義で書いた返信（User Token 投稿を含む）は数える。見分けに使った `users.info` の結果は監視台帳の `bot_users` に控える（回帰テスト `components/slack-thread-catchup/test_bot_author.py`） |
 | 起動回数の上限 | 1スレッド1日6回まで |
 | 二重起動防止 | 実行中は `processing`。120分超の滞留は自動回収 |
 | 監視の TTL | 14日新着なしで自動 close、closed は30日で削除 |

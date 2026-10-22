@@ -2,8 +2,9 @@
 """slack-thread-catchup: 新着返信の検知ポーラー（Stage1・LLM 非起動）。
 
 watchlist の open スレッドごとに conversations.replies を叩き、last_seen_ts より新しい
-「自分の Bot 以外の発言」を検知したら候補ファイルへ書き出す（オーナー本人の返信もトリガーに含める＝
-スレッド上の追加指示を拾うため）。claude の起動は run.sh が行う。
+「人の発言」を検知したら候補ファイルへ書き出す（オーナー本人の返信もトリガーに含める＝
+スレッド上の追加指示を拾うため）。自分の Bot の投稿は数えない。他のボットの名義の投稿（is_bot_author）は、
+オーナーか自分の Bot に宛てたもの（相手の Claude の返信）だけ数える。claude の起動は run.sh が行う。
 
 サブコマンド（exit code は kaishoku-reservation 方式）:
   scan                        検知。0=新着なし / 10=新着あり（候補ファイル出力）/ 1=エラー
@@ -147,7 +148,89 @@ def permalink(channel: str, ts: str) -> str:
     return f"{WORKSPACE_URL}/archives/{channel}/p{ts.replace('.', '')}"
 
 
-def fetch_new_replies(entry: dict, token: str, bot_uid: str) -> list:
+def is_bot_author(m: dict, is_bot_user=None) -> bool:
+    """ボット自身の名義の投稿か（純関数・is_bot_user は投稿者がボットのアカウントかを引く関数）。
+
+    人が自分のアプリ経由で自分の名義で書いた返信（user＝人・bot_id あり・bot_profile.user_id なし。
+    User Token で投稿する CLI や、各自の Claude 用アプリ）は人の返信として数える。
+    ボット名義（bot_profile.user_id が投稿者と同じ・投稿者がボットのアカウント）はボットとして扱い、
+    宛先の無いもの（受付ボットの受付表示・エラー表示）では起こさない（addressed_bot_reply を参照）。
+    引けないときは人として扱う（起こす側に倒す）。
+    """
+    user = m.get("user")
+    if not user or m.get("subtype") == "bot_message":
+        return True
+    if not m.get("bot_id"):
+        return False
+    bp_uid = (m.get("bot_profile") or {}).get("user_id")
+    if bp_uid:
+        return bp_uid == user
+    return bool(is_bot_user(user)) if is_bot_user else False
+
+
+def bot_account_lookup(token: str, data: dict):
+    """投稿者がボットのアカウントかを users.info で引く関数を返す（結果は watchlist の bot_users に控える）。
+    失敗は控えずに False（人として扱う・次の scan でまた引く）。通信の失敗が1回出たら、その scan では
+    以後引かない。scan は watchlist のロックを持ったまま回るので、引き直しで待たせない。"""
+    cache = data.setdefault("bot_users", {})
+    state = {"stop": False, "failed": set()}
+
+    def lookup(user: str) -> bool:
+        if user in cache:
+            return bool(cache[user])
+        if state["stop"] or user in state["failed"]:
+            return False
+        try:
+            res = slack_api("users.info", {"user": user}, token)
+        except (OSError, RuntimeError, ValueError) as e:  # URLError は OSError・JSON の破損は ValueError
+            state["stop"] = True
+            print(f"WARN: users.info {user}: {e}（この scan では以後引かない）", file=sys.stderr)
+            return False
+        if not res.get("ok"):
+            state["failed"].add(user)
+            print(f"WARN: users.info {user}: {res.get('error')}", file=sys.stderr)
+            return False
+        cache[user] = bool((res.get("user") or {}).get("is_bot"))
+        return cache[user]
+    return lookup
+
+
+MENTION_RE = re.compile(r"<@([A-Z0-9]+)(?:\|[^>]*)?>")
+
+
+def mentioned_ids(m: dict) -> set:
+    """本文（text）と blocks（section の文字・rich_text の user 要素）から、メンションされたユーザーIDを集める。"""
+    ids = set(MENTION_RE.findall(m.get("text") or ""))
+
+    def walk(e):
+        if isinstance(e, dict):
+            if e.get("type") == "user" and isinstance(e.get("user_id"), str):
+                ids.add(e["user_id"])
+            for k, v in e.items():
+                if k == "text" and isinstance(v, str):
+                    ids.update(MENTION_RE.findall(v))
+                elif isinstance(v, (dict, list)):
+                    walk(v)
+        elif isinstance(e, list):
+            for v in e:
+                walk(v)
+
+    walk(m.get("blocks") or [])
+    return ids
+
+
+def addressed_bot_reply(m: dict, bot_uid: str) -> bool:
+    """他のボットの名義の投稿のうち、オーナーか自分の Bot に宛てた（メンション付きの）ものか。
+
+    相手の Claude がボット名義で返す返信は宛先メンションを付ける（slack-post-rules.md）ので数え、
+    受付表示・エラー表示のように宛先の無いボット投稿では起こさない。user の無い bot_message は数えない。
+    """
+    if not m.get("user") or m.get("subtype") == "bot_message":
+        return False
+    return bool(mentioned_ids(m) & {bot_uid, MY_USER_ID})
+
+
+def fetch_new_replies(entry: dict, token: str, bot_uid: str, is_bot_user=None) -> list:
     res = slack_api(
         "conversations.replies",
         {"channel": entry["channel"], "ts": entry["thread_ts"], "limit": 100},
@@ -162,9 +245,13 @@ def fetch_new_replies(entry: dict, token: str, bot_uid: str) -> list:
         user = m.get("user")
         if not ts or float(ts) <= last_seen:
             continue
-        # 自分の Bot の投稿は除外（自己ループ防止）。user 無し（他 bot の bot_message 等）も
-        # bot 同士のピンポンを避けるため除外する。オーナー本人（User Token 投稿含む）はトリガーに含める。
-        if not user or user == bot_uid:
+        # 自分の Bot の投稿は除外（自己ループ防止・cc でオーナー宛てのメンションが付いていても除外）。
+        # 他のボットの名義の投稿（user 無しの bot_message・ボットのアカウントの投稿）は、オーナーか自分の Bot に
+        # 宛てたもの（相手の Claude の返信）だけ数え、宛先の無いもの（受付表示・エラー表示）では起こさない。
+        # オーナー本人・相手が自分のアプリ経由で自分の名義で書いた返信（User Token 投稿含む）はトリガーに含める。
+        if user == bot_uid:
+            continue
+        if is_bot_author(m, is_bot_user) and not addressed_bot_reply(m, bot_uid):
             continue
         text = (m.get("text") or "").replace("\n", " ")
         new.append({"ts": ts, "user": user, "text": text[:REPLY_EXCERPT_LEN]})
@@ -197,12 +284,13 @@ def cmd_scan() -> int:
         print(f"ERROR: auth.test: {e}", file=sys.stderr)
         return 1
 
+    is_bot_user = bot_account_lookup(token, data)
     for entry in open_entries:
         if not watchlist.can_run_today(entry):
             print(f"skip (runs/day cap {watchlist.MAX_RUNS_PER_DAY}): {entry['id']}")
             continue
         try:
-            new = fetch_new_replies(entry, token, bot_uid)
+            new = fetch_new_replies(entry, token, bot_uid, is_bot_user=is_bot_user)
         except (OSError, RuntimeError, urllib.error.URLError) as e:
             print(f"WARN: fetch failed: {e}", file=sys.stderr)
             errors += 1

@@ -28,6 +28,21 @@ done
 
 mark() { if [ "$1" = "1" ]; then printf '✅'; else printf '—'; fi; }
 
+# ログイン済みか（$1=service 名・$2=account 名〔省略可〕）。
+# 項目の有無だけでは判定しない。`claude mcp list` などは未ログインでも MCP 用の情報（mcpOAuth）だけを
+# 同じ service 名で作るため、有無で見ると未ログインを ✅ と表示する（2026-10-22・claude4 で実測）。
+# 中身は画面に出さず、ログイン情報の鍵名（claudeAiOauth）があるかだけを見る。
+# 同じ service 名に account 名違いの項目が並ぶことがある（ログイン用は macOS のユーザー名／MCP 用は unknown）。
+# `-s` だけだと先頭の1件しか見ないので、自分のユーザー名の項目と先頭の項目の両方を見る。
+has_login() {
+  local a
+  for a in "$(id -un)" ""; do
+    /usr/bin/grep -q '"claudeAiOauth"' <<< "$(security find-generic-password -s "$1" ${a:+-a "$a"} -w 2>/dev/null)" \
+      && return 0
+  done
+  return 1
+}
+
 printf '\n=== Claude マルチアカウント状態 ===\n'
 printf 'いま動いているプロファイル: %s\n' "${CLAUDE_CONFIG_DIR:-$MAIN_CFG (default)}"
 
@@ -35,7 +50,7 @@ printf 'いま動いているプロファイル: %s\n' "${CLAUDE_CONFIG_DIR:-$MA
 printf '\n[main] %s\n' "$MAIN_CFG"
 if [ -d "$MAIN_CFG" ]; then
   main_login=0
-  if security find-generic-password -s "Claude Code-credentials" >/dev/null 2>&1; then main_login=1; fi
+  if has_login "Claude Code-credentials"; then main_login=1; fi
   printf '  Keychain ログイン : %s (Claude Code-credentials)\n' "$(mark "$main_login")"
   main_token=0
   if [ -s "$MAIN_CFG/.oauth-token" ]; then main_token=1; fi
@@ -63,7 +78,7 @@ for cfg in "$ACCOUNTS_ROOT"/*; do
 
   svc="$(cma_keychain_service "$cfg")"
   login=0
-  if security find-generic-password -s "$svc" >/dev/null 2>&1; then login=1; fi
+  if has_login "$svc"; then login=1; fi
   printf '  Keychain ログイン : %s (%s)\n' "$(mark "$login")" "$svc"
 
   token=0
