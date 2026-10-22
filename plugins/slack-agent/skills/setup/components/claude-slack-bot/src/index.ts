@@ -338,7 +338,7 @@ async function handlePrompt(
 }
 
 // 認証失敗（1ターンも走らずに落ちた）をオーナーへ 🔴 で1日1回だけ知らせる。
-// 復旧手順まで書く（credential-expiry-rules.md「再発行/再ログインを必ず本文に含める」）
+// 復旧手順まで書く（受け取った人がその場で直せるように）
 let lastAuthAlertDay = "";
 async function notifyOwnerAuthFailure(detail: string, srcChannel: string): Promise<void> {
   const day = new Date().toISOString().slice(0, 10);
@@ -348,8 +348,8 @@ async function notifyOwnerAuthFailure(detail: string, srcChannel: string): Promi
   const body =
     "[claude-slack-bot] 結論: Bot の Claude 起動が認証で落ちました（1ターンも走らず課金ゼロ）。\n" +
     `理由: ${detail.slice(0, 200)}\n` +
-    `論点: 稼働ホスト ${host} の長期トークン（~/.claude/.oauth-token）が失効・破損している可能性があります。` +
-    "`claude setup-token` → `bash .claude/scripts/claude-token-install.sh` で入れ直してください。";
+    `論点: 稼働ホスト ${host} の長期トークン（~/.claude/.oauth-token）が無いか、失効・破損している可能性があります。` +
+    "`claude setup-token` で発行し、slack-agent の SKILL.md「Bot の Claude 認証（長期トークン）」の手順で入れ直してください。";
   await app.client.chat
     .postMessage({
       channel: config.DM_CHANNEL_ID,

@@ -21,14 +21,7 @@ const SKILL_PATTERNS: Array<[RegExp, string, number]> = [
     config.BUDGET_SKILL,
   ],
 
-  // Agent Teams は全廃（2026-08-26 鈴木指示）。後継は management-agent-team / ad-lead-review /
-  // hiring-lead / pm-lead の各統括機構。skill 実体を削除したためルーティングを撤去した
-  // （旧: [/戦略チーム|strategy.?team|agent.?team|チームで|チーム起動/i, "strategy-team", config.BUDGET_TEAM]）
-  // board-team は 2026-08-23 に凍結（機構停止・鈴木指示）。ルーティングを撤去した
-  // （旧: [/ボード|board|CxO|cfo|cto|coo|chro/i, "board-team", config.BUDGET_TEAM]）
-
-  // 2026-08-26: 実在しないスキルへのルーティング 3 件（blog-writer / offers-pptx / offers-bigquery-analysis）を削除。
-  // 以後、ルーティング先は skillExists() で `.claude/skills/<name>/SKILL.md` の実在を検証する（実在しなければ汎用処理へ）
+  // ルーティング先は skillExists() で `.claude/skills/<name>/SKILL.md` の実在を検証する（実在しなければ汎用処理へ）
 
   // Content creation skills
   [/x投稿|xの下書き|ツイート|twitter.*下書き/i, "x-daily-post", config.BUDGET_SKILL],

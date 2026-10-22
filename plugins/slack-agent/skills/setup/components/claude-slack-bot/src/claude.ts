@@ -41,8 +41,8 @@ function findClaudePath(): string {
 const CLAUDE_BIN = findClaudePath();
 console.log(`[claude] Binary: ${CLAUDE_BIN}`);
 
-// 無人ジョブと同じ長期トークン（~/.claude/.oauth-token・1年）を供給する。
-// 常駐 Bot は claude-invoke.sh を経由しないため、これが無いと対話用の
+// 長期トークン（~/.claude/.oauth-token・`claude setup-token` で発行・1年）があれば供給する。
+// これが無いと対話用の
 // Keychain OAuth のリフレッシュに依存し、失敗すると1ターンも走らずに落ちる。
 const LAUNCHD_TOKEN_FILE = `${process.env.HOME}/.claude/.oauth-token`;
 function readLaunchdToken(): string | undefined {

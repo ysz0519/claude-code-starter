@@ -10,6 +10,7 @@
 # 中身が最も進んでいるもの（最後の発言の時刻が新しいもの）を移動先へコピーする。
 # 更新時刻では選ばない（止まった側の窓を閉じただけでも更新時刻は進む）。
 # --to auto は、記録が今あるアカウントを除き、5時間枠と週の枠の残りが最も多いアカウントを選ぶ。
+# 枠の記録がどのアカウントにも無ければ、推測で選ばずに止まる（--to 2 のように番号で指定する）。
 # コピーは複製で、元の記録は残る。移動先に古い写しがあれば .bak-<時刻> に退避してから置き換える。
 # 既定では iTerm の前面の窓に新しいタブを開き、`cd <会話の作業フォルダ> && claudeN --resume <ID>` を実行する。
 
@@ -35,7 +36,7 @@ while [ "$#" -gt 0 ]; do
     --no-launch) LAUNCH=0; shift ;;
     --prepare) LAUNCH=2; shift ;;
     --notify) NOTIFY=1; shift ;;
-    -h|--help) sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) cma_die "不明なオプション: $1" ;;
     *) IDS="$IDS $1"; shift ;;
   esac
@@ -73,6 +74,7 @@ elif [ -r "$USAGE_REFRESH" ]; then
 fi
 
 # 枠の残りが最も多いプロファイルを「設定フォルダ<TAB>説明」で返す（第1引数のプロファイルは除く）
+# 候補のどれにも枠の記録が無ければ何も返さず終了コード 3（選ぶ根拠が無い）
 pick_target() {
   local exclude=$1 cfg
   set --
@@ -104,6 +106,8 @@ for arg in sys.argv[2:]:
         continue
     left5, left7 = 100 - (p5 or 0), 100 - (p7 or 0)
     rows.append((min(left5, left7), left7, cfg, "%s（5時間枠 残り%d%%・週 残り%d%%）" % (name, left5, left7)))
+if rows and all(r[0] < 0 for r in rows):
+    sys.exit(3)
 ok = [r for r in rows if r[0] > 0] or [r for r in rows if r[0] < 0]
 if ok:
     best = max(ok)
@@ -194,9 +198,14 @@ for ID in $IDS; do
   if [ -n "$FIXED_CFG" ]; then
     DST_CFG="$FIXED_CFG"
   else
-    out="$(pick_target "$best_cfg")"
+    out="$(pick_target "$best_cfg")"; prc=$?
     DST_CFG=""; why=""
     IFS=$'\t' read -r DST_CFG why <<< "$out"
+    if [ "$prc" = 3 ]; then
+      cma_warn "枠の記録（${USAGE_DIR}）がどのアカウントにも無いので、移動先を決められません。--to 2 のように番号で指定してください"
+      notify "枠の記録が無いので移動先を決められません。move-session.sh --to 2 のように番号で指定して移してください。"
+      continue
+    fi
     if [ -z "$DST_CFG" ]; then
       cma_warn "移せるアカウントがありません（どれも枠が尽きています）"
       notify "移せるアカウントがありません（どれも枠が尽きています）。枠が戻るまで待つ必要があります。"

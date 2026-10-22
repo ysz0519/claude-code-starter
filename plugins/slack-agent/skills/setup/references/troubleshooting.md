@@ -25,6 +25,9 @@
 
 ## 常駐 Bot が反応しない
 
+DM に「🔴 Bot の認証エラー」が届いている場合は、Claude の起動が認証で落ちている。
+SKILL.md「Bot の Claude 認証（長期トークン）」の手順で `~/.claude/.oauth-token` を入れ直す（再起動は不要）。それ以外は次の順で切り分ける。
+
 1. プロセス確認: `pgrep -f claude-slack-bot/dist/index.js`
 2. ログ確認: `components/claude-slack-bot/logs/stderr.log`
 3. 再起動: `launchctl kickstart -k gui/$(id -u)/com.claude-slack-agent.bot`

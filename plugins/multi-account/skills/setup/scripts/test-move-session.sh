@@ -48,6 +48,15 @@ scenario "どれも尽きていれば移さない" none main "$(u 100 $H 50 $D)"
 scenario "記録が今あるアカウントは空いていても移動先にしない" none main "$(u 0 $H 0 $D)" "$(u 100 $H 1 $D)" "$(u 100 $H 1 $D)"
 scenario "claude3 から戻すときも他の2つから選ぶ" claude 3 "$(u 100 $PAST 50 $D)" "$(u 100 $H 100 $D)" "$(u 0 $H 0 $D)"
 scenario "枠の記録が無いアカウントは最後の手段" claude3 main "$(u 100 $H 50 $D)" "not json" "$(u 90 $H 20 $D)"
+scenario "どの移動先にも枠の記録が無ければ推測で選ばない" none main "$(u 0 $H 0 $D)" "not json" "not json"
+
+# 記録が無いときは番号での指定を促す（配布版のステータスラインは枠の記録を書かない）
+T="$(mktemp -d "$ROOT/n.XXXXXX")"
+mkdir -p "$T/main/projects/-x" "$T/acc/account2/projects" "$T/acc/account3/projects" "$T/u"
+printf '{"timestamp":"2026-10-18T05:00:00Z","cwd":"%s"}\n' "$WORK" > "$T/main/projects/-x/$ID.jsonl"
+out=$(CLAUDE_MAIN_CONFIG_DIR="$T/main" CLAUDE_ACCOUNTS_ROOT="$T/acc" CLAUDE_USAGE_DIR="$T/u" \
+      /bin/bash "$S" --to auto --no-launch "$ID" 2>&1)
+if grep -q -- "--to 2 のように番号で指定" <<< "$out"; then echo "ok   記録が無いときは番号での指定を促す"; else echo "FAIL 記録が無いのに番号指定を促さなかった"; echo "$out" | sed 's/^/     /'; FAIL=1; fi
 
 # 進み具合で選ぶ（更新時刻ではなく最後の発言時刻）
 T="$(mktemp -d "$ROOT/p.XXXXXX")"
